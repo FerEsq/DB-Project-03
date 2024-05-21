@@ -12,8 +12,8 @@
     - Modificado el 20.05.2024
 '''
 
-import time
-from datetime import datetime
-current_timestamp = time.time()
-dt_object = datetime.fromtimestamp(current_timestamp)
-print(dt_object)
+# import time
+# from datetime import datetime
+# current_timestamp = time.time()
+# dt_object = datetime.fromtimestamp(current_timestamp)
+# print(dt_object)

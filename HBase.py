@@ -15,6 +15,17 @@
 import json
 import os
 from datetime import datetime
+import pyfiglet
+from rich.console import Console
+from rich.style import Style
+from prettytable import PrettyTable
+
+#Definir consola y estilos de rich
+console = Console()
+blueBold = Style(color="blue", bold=True)
+redBold = Style(color="red", bold=True)
+blueLight = Style(color="blue", bold=False)
+redLight = Style(color="red", bold=False)
 
 class HBase:
     """
@@ -47,16 +58,37 @@ class HBase:
         
         #Crear el archivo JSON con la estructura de la tabla
         filePath = os.path.join(self.directory, fileName)
+        
+        if os.path.exists(filePath):
+            console.print(f"SISTEMA: El archivo {fileName} ya existe. ¿Desea sobrescribirlo? (s/n): ", style="blue bold")
+            overwrite = input().strip().lower()
+            if overwrite != 's':
+                console.print("SISTEMA: Operación cancelada. La tabla no fue creada.", style=blueBold)
+                return
+        
         with open(filePath, 'w') as f:
             json.dump(tableStructure, f, indent=4)
         
-        print(f'Table {tableName} created in {filePath}.')
+        console.print(f'SISTEMA: Tabla {tableName} creada en {filePath}.', style=blueBold)
     
     """
     Función para listar las tablas en HBase
     """
     def list(self):
-        return [f.replace('.json', '') for f in os.listdir(self.directory) if f.endswith('.json')]
+        listTable = PrettyTable()
+        listTable.field_names = ["Tabla", "Column Families"]
+        
+        for file in os.listdir(self.directory):
+            if file.endswith('.json'):
+                tableName = file.replace('.json', '')
+                filePath = os.path.join(self.directory, file)
+                with open(filePath, 'r') as f:
+                    data = json.load(f)
+                    column_families = ", ".join(data["metadata"]["column_families"])
+                listTable.add_row([tableName, column_families])
+        
+        print(listTable)
+        print("\n")
     
     def disable(self, table_name):
         #TODO: Implementar lógica para deshabilitar una tabla
@@ -111,10 +143,30 @@ def requestCreateData(hbase):
     except Exception as e:
         print(f"Error al crear la tabla: {e}")
 
+"""
+Función para imprimir el mensaje de bienvenida y los comandos disponibles
+"""
+def printWelcome():
+    asciiHBase = pyfiglet.figlet_format("HBase Simulator")
+    print(asciiHBase)
+
+    console.print("A continuación escriba el comando que desea ejecutar:", style=blueBold)
+
+    table = PrettyTable()
+    table.field_names = ["Comando", "Funcionalidad"]
+    table.add_row(["create", "Crear nueva tabla"])
+    table.add_row(["list", "Lista las tablas de la base de datos"])
+    table.add_row(["exit", "Salir del programa"])
+
+    print(table)
+    print("\n")
 
 #Ejecución del programa
 if __name__ == '__main__':
     hbase = HBase()
+
+    #Imprimir bienvenida
+    printWelcome()
     
     while True:
         command = input('> ').strip().lower()
@@ -123,8 +175,7 @@ if __name__ == '__main__':
             requestCreateData(hbase)
         
         elif command == 'list':
-            tables = hbase.list()
-            print('Tables:', ', '.join(tables))
+            tablesList = hbase.list()
         
         elif command == 'drop':
             table_name = input("Ingrese el nombre de la tabla a eliminar: ").strip()
@@ -137,7 +188,8 @@ if __name__ == '__main__':
                 print(json.dumps(description, indent=4))
         
         elif command == 'exit':
+            console.print("\n¡Gracias por utilizar el programa!", style=blueBold)
             break
         
         else:
-            print('Unknown command.')
+            console.print("ERROR: Comando desconocido.", style=redBold)

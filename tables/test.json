@@ -2,12 +2,12 @@
     "metadata": {
         "table_name": "testito",
         "column_families": [
-            "lol",
-            "xd"
+            "hola",
+            "mundo"
         ],
         "disabled": false,
-        "created": "2024-05-20T23:27:44.797299",
-        "modified": "2024-05-20T23:27:44.797299",
+        "created": "2024-05-21T15:02:32.828737",
+        "modified": "2024-05-21T15:02:32.828737",
         "rows_counter": 0
     },
     "rows_data": {}
