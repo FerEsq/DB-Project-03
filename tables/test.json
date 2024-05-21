@@ -1,0 +1,14 @@
+{
+    "metadata": {
+        "table_name": "testito",
+        "column_families": [
+            "lol",
+            "xd"
+        ],
+        "disabled": false,
+        "created": "2024-05-20T23:27:44.797299",
+        "modified": "2024-05-20T23:27:44.797299",
+        "rows_counter": 0
+    },
+    "rows_data": {}
+}

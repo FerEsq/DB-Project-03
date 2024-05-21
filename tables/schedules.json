@@ -1,0 +1,40 @@
+{
+    "metadata": {
+        "table_name": "schedules",
+        "column_families": [
+            "classrooms",
+            "teachers"
+        ],
+        "disabled": false,
+        "created": "2024-05-20 18:14:58.178875",
+        "modified": "2024-05-20 18:15:18.898534",
+        "rows_counter": 1
+    },
+    "rows_data": {
+        "664bd54636138eaa71047865": {
+            "classrooms": {
+                "identifier": {
+                    "2024-05-20 18:16:14.351767": "CIT-315",
+                    "2024-05-20 18:16:22.883095": "CIT-641"
+                },
+                "capacity": {
+                    "2024-05-20 18:16:37.432876": 30
+                },
+                "tipe": {
+                    "2024-05-20 18:16:45.147681": "aula",
+                    "2024-05-20 18:16:58.310067": "laboratorio"
+                }
+            },
+            "teachers": {
+                "name": {
+                    "2024-05-20 18:17:19.237342": "Juan Perez",
+                    "2024-05-20 18:17:24.128437": "Maria Lopez"
+                },
+                "faculty": {
+                    "2024-05-20 18:18:47.351767": "Ciencias Sociales",
+                    "2024-05-20 18:19:01.883095": "Ingenieria"
+                }
+            }
+        }
+    }
+}
