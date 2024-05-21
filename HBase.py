@@ -90,9 +90,25 @@ class HBase:
         print(listTable)
         print("\n")
     
-    def disable(self, table_name):
-        #TODO: Implementar lógica para deshabilitar una tabla
-        pass
+    def disable(self, tableName):
+        found = False
+        for file in os.listdir(self.directory):
+            if file.endswith('.json'):
+                file_path = os.path.join(self.directory, file)
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                    if data["metadata"]["table_name"] == tableName:
+                        data["metadata"]["disabled"] = True
+                        data["metadata"]["modified"] = datetime.now().isoformat()
+                        found = True
+                        with open(file_path, 'w') as f_write:
+                            json.dump(data, f_write, indent=4)
+                        console.print(f'SISTEMA: Tabla {tableName} deshabilitada.', style=blueBold)
+                        break
+        
+        if not found:
+            print()
+            console.print(f'ERROR: Tabla {tableName} no encontrada.', style=redBold)
     
     def is_enabled(self, table_name):
         #TODO: Implementar lógica para verificar si una tabla está habilitada
@@ -141,32 +157,48 @@ def requestCreateData(hbase):
         hbase.create(fileName, tableName, columnFamilies)
     
     except Exception as e:
-        print(f"Error al crear la tabla: {e}")
+        print()
+        console.print(f"ERROR: No fue posibe crear la tabla: {e}", style=redBold)
 
 """
-Función para imprimir el mensaje de bienvenida y los comandos disponibles
+Función para solicitar los datos necesarios para deshabilitar una tabla en HBase
+* hbase: Instancia de la clase HBase
 """
-def printWelcome():
-    asciiHBase = pyfiglet.figlet_format("HBase Simulator")
-    print(asciiHBase)
+def requestDisableData(hbase):
+    try:
+        tableName = input("Ingrese el nombre de la tabla: ").strip()
+        
+        hbase.disable(tableName)
+    
+    except Exception as e:
+        print()
+        console.print(f"ERROR: No fue posibe deshabilitar la tabla: {e}", style=redBold)
 
-    console.print("A continuación escriba el comando que desea ejecutar:", style=blueBold)
-
+"""
+Función para imprime los comandos disponibles
+"""
+def printComands():
     table = PrettyTable()
     table.field_names = ["Comando", "Funcionalidad"]
     table.add_row(["create", "Crear nueva tabla"])
-    table.add_row(["list", "Lista las tablas de la base de datos"])
+    table.add_row(["list", "Listar tablas de la base de datos"])
+    table.add_row(["disable", "Deshabilitar una tabla"])
+    table.add_row(["help", "Imprimir los comandos disponibles"])
     table.add_row(["exit", "Salir del programa"])
 
     print(table)
-    print("\n")
 
 #Ejecución del programa
 if __name__ == '__main__':
     hbase = HBase()
 
     #Imprimir bienvenida
-    printWelcome()
+    asciiHBase = pyfiglet.figlet_format("HBase Simulator")
+    print(asciiHBase)
+
+    console.print("A continuación escriba el comando que desea ejecutar:", style=blueBold)
+    printComands()
+    print("\n")
     
     while True:
         command = input('> ').strip().lower()
@@ -176,6 +208,9 @@ if __name__ == '__main__':
         
         elif command == 'list':
             tablesList = hbase.list()
+
+        elif command == 'disable':
+            requestDisableData(hbase)
         
         elif command == 'drop':
             table_name = input("Ingrese el nombre de la tabla a eliminar: ").strip()
@@ -186,6 +221,9 @@ if __name__ == '__main__':
             description = hbase.describe(table_name)
             if description:
                 print(json.dumps(description, indent=4))
+
+        elif command == 'help':
+            printComands()
         
         elif command == 'exit':
             console.print("\n¡Gracias por utilizar el programa!", style=blueBold)
