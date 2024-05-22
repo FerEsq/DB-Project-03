@@ -85,8 +85,8 @@ class HBase:
                 filePath = os.path.join(self.directory, file)
                 with open(filePath, 'r') as f:
                     data = json.load(f)
-                    column_families = ", ".join(data["metadata"]["column_families"])
-                listTable.add_row([tableName, column_families])
+                    columnFamilies = ", ".join(data["metadata"]["column_families"])
+                listTable.add_row([tableName, columnFamilies])
         
         print(listTable)
     
@@ -94,7 +94,7 @@ class HBase:
     Función para deshabilitar una tabla en HBase
     * tableName: Nombre de la tabla a deshabilitar
     """
-    def disable(self, tableName):
+    def changeStatus(self, tableName, action):
         found = False
         for file in os.listdir(self.directory):
             if file.endswith('.json'):
@@ -102,17 +102,24 @@ class HBase:
                 with open(filePath, 'r') as f:
                     data = json.load(f)
                     if data["metadata"]["table_name"] == tableName:
-                        data["metadata"]["disabled"] = True
+                        if action == "disable":
+                            data["metadata"]["disabled"] = True
+                        elif action == "enable":
+                            data["metadata"]["disabled"] = False
                         data["metadata"]["modified"] = datetime.now().isoformat()
                         found = True
                         with open(filePath, 'w') as f_write:
                             json.dump(data, f_write, indent=4)
-                        console.print(f'SISTEMA: Tabla {tableName} deshabilitada.', style=blue)
+                        if action == "disable":
+                            console.print(f'SISTEMA: Tabla {tableName} deshabilitada.', style=blue)
+                        elif action == "enable":
+                            console.print(f'SISTEMA: Tabla {tableName} habilitada.', style=blue)
                         break
         
         if not found:
             print()
             console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
+            
     
     """
     Función para verificar si una tabla está habilitada o no
@@ -120,11 +127,14 @@ class HBase:
     """
     def is_enabled(self, tableName):
         found = False
+
         for file in os.listdir(self.directory):
             if file.endswith('.json'):
                 filePath = os.path.join(self.directory, file)
+
                 with open(filePath, 'r') as f:
                     data = json.load(f)
+
                     if data["metadata"]["table_name"] == tableName:
                         found = True
                         if data["metadata"]["disabled"]:
@@ -137,11 +147,39 @@ class HBase:
         if not found:
             console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
 
-    
-    def alter(self, table_name, new_structure):
-        #TODO: Implementar lógica para modificar una tabla
-        pass
-    
+    """
+    Función para alterar una tabla en HBase
+    * tableName: Nombre de la tabla a alterar
+    * newTableName: Nuevo nombre de la tabla
+    * newColumnFamilies: Nuevas column families de la tabla
+    """
+    def alter(self, tableName, newTableName, newColumnFamilies):
+        found = False
+
+        for file in os.listdir(self.directory):
+            if file.endswith('.json'):
+                filePath = os.path.join(self.directory, file)
+
+                with open(filePath, 'r') as f:
+                    data = json.load(f)
+
+                    if data["metadata"]["table_name"] == tableName:
+                        #Actualizar los metadatos de la tabla
+                        data["metadata"]["table_name"] = newTableName
+                        data["metadata"]["column_families"] += newColumnFamilies
+                        data["metadata"]["modified"] = datetime.now().isoformat()
+                        found = True
+
+                        #Guardar los cambios en el archivo JSON
+                        with open(filePath, 'w') as f_write:
+                            json.dump(data, f_write, indent=4)
+
+                        console.print(f"SISTEMA: Tabla {tableName} ha sido alterada a {newTableName} con nuevas column families.", style=blue)
+                        break
+        
+        if not found:
+            console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
+
     """
     Función para eliminar una tabla en HBase
     * tableName: Nombre de la tabla a eliminar
@@ -173,12 +211,11 @@ Función para solicitar los datos necesarios para crear una tabla en HBase
 """
 def requestCreateData(hbase):
     try:
-        fileName = input("Ingrese el nombre del archivo JSON: ").strip() + ".json"
         tableName = input("Ingrese el nombre de la tabla: ").strip()
         columnFamilies = input("Ingrese las column families separadas por comas: ").strip().split(',')
         columnFamilies = [cf.strip() for cf in columnFamilies]
         
-        return fileName, tableName, columnFamilies
+        return tableName, columnFamilies
     
     except Exception as e:
         print()
@@ -199,6 +236,23 @@ def requestTableName(hbase):
         console.print(f"ERROR: No fue posibe deshabilitar la tabla: {e}", style=red)
 
 """
+Función para solicitar los datos necesarios para alterar una tabla en HBase
+* hbase: Instancia de la clase HBase
+"""
+def requestAlterData(hbase):
+    try:
+        oldTableName = input("Ingrese el nombre de la tabla a editar: ").strip()
+        newTableName = input("Ingrese el nuevo nombre de la tabla: ").strip()
+        newColumnFamilies = input("Ingrese las column families a agregar separadas por comas: ").strip().split(',')
+        newColumnFamilies = [cf.strip() for cf in newColumnFamilies]
+        
+        return oldTableName, newTableName, newColumnFamilies
+    
+    except Exception as e:
+        print()
+        console.print(f"ERROR: No fue posibe alterar la tabla: {e}", style=red)
+
+"""
 Función para imprime los comandos disponibles
 """
 def printComands():
@@ -207,7 +261,9 @@ def printComands():
     table.add_row(["create", "Crear nueva tabla"])
     table.add_row(["list", "Listar tablas de la base de datos"])
     table.add_row(["disable", "Deshabilitar una tabla"])
+    table.add_row(["enable", "Habilitar una tabla"])
     table.add_row(["is_enabled", "Verficar estado de una tabla"])
+    table.add_row(["alter", "Alterar elementos de una tabla"])
     table.add_row(["help", "Imprimir los comandos disponibles"])
     table.add_row(["exit", "Salir del programa"])
 
@@ -229,7 +285,8 @@ if __name__ == '__main__':
         command = input('> ').strip().lower()
         
         if command == 'create':
-            fileName, tableName, columnFamilies = requestCreateData(hbase)
+            tableName, columnFamilies = requestCreateData(hbase)
+            fileName = tableName + ".json"
             hbase.create(fileName, tableName, columnFamilies)
         
         elif command == 'list':
@@ -237,11 +294,19 @@ if __name__ == '__main__':
 
         elif command == 'disable':
             tableName = requestTableName(hbase)
-            hbase.disable(tableName)
+            hbase.changeStatus(tableName, "disable")
+
+        elif command == 'enable':
+            tableName = requestTableName(hbase)
+            hbase.changeStatus(tableName, "enable")
 
         elif command == 'is_enabled':
             tableName = requestTableName(hbase)
             hbase.is_enabled(tableName)
+
+        elif command == 'alter':
+            oldTableName, newTableName, newColumnFamilies = requestAlterData(hbase)
+            hbase.alter(oldTableName, newTableName, newColumnFamilies)
         
         elif command == 'drop':
             table_name = input("Ingrese el nombre de la tabla a eliminar: ").strip()
