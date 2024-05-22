@@ -1,13 +1,13 @@
 {
     "metadata": {
-        "table_name": "prueba",
+        "table_name": "testito",
         "column_families": [
-            "lol",
-            "xd"
+            "hello",
+            "world"
         ],
         "disabled": true,
-        "created": "2024-05-21T16:32:45.601772",
-        "modified": "2024-05-21T17:36:27.537998",
+        "created": "2024-05-21T18:09:24.829344",
+        "modified": "2024-05-21T18:11:34.354150",
         "rows_counter": 0
     },
     "rows_data": {}

@@ -22,10 +22,11 @@ from prettytable import PrettyTable
 
 #Definir consola y estilos de rich
 console = Console()
-blueBold = Style(color="blue", bold=True)
-redBold = Style(color="red", bold=True)
-blueLight = Style(color="blue", bold=False)
-redLight = Style(color="red", bold=False)
+magenta = Style(color="magenta", bold=True)
+red = Style(color="red", bold=True)
+blue = Style(color="blue", bold=True)
+green = Style(color="green", bold=True)
+yellow = Style(color="yellow", bold=True)
 
 class HBase:
     """
@@ -60,16 +61,16 @@ class HBase:
         filePath = os.path.join(self.directory, fileName)
         
         if os.path.exists(filePath):
-            console.print(f"SISTEMA: El archivo {fileName} ya existe. ¿Desea sobrescribirlo? (s/n): ", style="blue bold")
+            console.print(f"SISTEMA: El archivo {fileName} ya existe. ¿Desea sobrescribirlo? (s/n): ", style=blue)
             overwrite = input().strip().lower()
             if overwrite != 's':
-                console.print("SISTEMA: Operación cancelada. La tabla no fue creada.", style=blueBold)
+                console.print("SISTEMA: Operación cancelada. La tabla no fue creada.", style=blue)
                 return
         
         with open(filePath, 'w') as f:
             json.dump(tableStructure, f, indent=4)
         
-        console.print(f'SISTEMA: Tabla {tableName} creada en {filePath}.', style=blueBold)
+        console.print(f'SISTEMA: Tabla {tableName} creada en {filePath}.', style=blue)
     
     """
     Función para listar las tablas en HBase
@@ -88,31 +89,54 @@ class HBase:
                 listTable.add_row([tableName, column_families])
         
         print(listTable)
-        print("\n")
     
+    """
+    Función para deshabilitar una tabla en HBase
+    * tableName: Nombre de la tabla a deshabilitar
+    """
     def disable(self, tableName):
         found = False
         for file in os.listdir(self.directory):
             if file.endswith('.json'):
-                file_path = os.path.join(self.directory, file)
-                with open(file_path, 'r') as f:
+                filePath = os.path.join(self.directory, file)
+                with open(filePath, 'r') as f:
                     data = json.load(f)
                     if data["metadata"]["table_name"] == tableName:
                         data["metadata"]["disabled"] = True
                         data["metadata"]["modified"] = datetime.now().isoformat()
                         found = True
-                        with open(file_path, 'w') as f_write:
+                        with open(filePath, 'w') as f_write:
                             json.dump(data, f_write, indent=4)
-                        console.print(f'SISTEMA: Tabla {tableName} deshabilitada.', style=blueBold)
+                        console.print(f'SISTEMA: Tabla {tableName} deshabilitada.', style=blue)
                         break
         
         if not found:
             print()
-            console.print(f'ERROR: Tabla {tableName} no encontrada.', style=redBold)
+            console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
     
-    def is_enabled(self, table_name):
-        #TODO: Implementar lógica para verificar si una tabla está habilitada
-        pass
+    """
+    Función para verificar si una tabla está habilitada o no
+    * tableName: Nombre de la tabla a verificar
+    """
+    def is_enabled(self, tableName):
+        found = False
+        for file in os.listdir(self.directory):
+            if file.endswith('.json'):
+                filePath = os.path.join(self.directory, file)
+                with open(filePath, 'r') as f:
+                    data = json.load(f)
+                    if data["metadata"]["table_name"] == tableName:
+                        found = True
+                        if data["metadata"]["disabled"]:
+                            print(f'Table {tableName} IS disabled.')
+                            console.print(f'Tabla {tableName} SI está deshabilitada.', style=yellow)
+                        else:
+                            console.print(f'Tabla {tableName} NO está deshabilitada.', style=green)
+                        break
+        
+        if not found:
+            console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
+
     
     def alter(self, table_name, new_structure):
         #TODO: Implementar lógica para modificar una tabla
@@ -154,25 +178,25 @@ def requestCreateData(hbase):
         columnFamilies = input("Ingrese las column families separadas por comas: ").strip().split(',')
         columnFamilies = [cf.strip() for cf in columnFamilies]
         
-        hbase.create(fileName, tableName, columnFamilies)
+        return fileName, tableName, columnFamilies
     
     except Exception as e:
         print()
-        console.print(f"ERROR: No fue posibe crear la tabla: {e}", style=redBold)
+        console.print(f"ERROR: No fue posibe crear la tabla: {e}", style=red)
 
 """
 Función para solicitar los datos necesarios para deshabilitar una tabla en HBase
 * hbase: Instancia de la clase HBase
 """
-def requestDisableData(hbase):
+def requestTableName(hbase):
     try:
         tableName = input("Ingrese el nombre de la tabla: ").strip()
-        
-        hbase.disable(tableName)
+
+        return tableName
     
     except Exception as e:
         print()
-        console.print(f"ERROR: No fue posibe deshabilitar la tabla: {e}", style=redBold)
+        console.print(f"ERROR: No fue posibe deshabilitar la tabla: {e}", style=red)
 
 """
 Función para imprime los comandos disponibles
@@ -183,6 +207,7 @@ def printComands():
     table.add_row(["create", "Crear nueva tabla"])
     table.add_row(["list", "Listar tablas de la base de datos"])
     table.add_row(["disable", "Deshabilitar una tabla"])
+    table.add_row(["is_enabled", "Verficar estado de una tabla"])
     table.add_row(["help", "Imprimir los comandos disponibles"])
     table.add_row(["exit", "Salir del programa"])
 
@@ -196,7 +221,7 @@ if __name__ == '__main__':
     asciiHBase = pyfiglet.figlet_format("HBase Simulator")
     print(asciiHBase)
 
-    console.print("A continuación escriba el comando que desea ejecutar:", style=blueBold)
+    console.print("A continuación escriba el comando que desea ejecutar:", style=magenta)
     printComands()
     print("\n")
     
@@ -204,13 +229,19 @@ if __name__ == '__main__':
         command = input('> ').strip().lower()
         
         if command == 'create':
-            requestCreateData(hbase)
+            fileName, tableName, columnFamilies = requestCreateData(hbase)
+            hbase.create(fileName, tableName, columnFamilies)
         
         elif command == 'list':
             tablesList = hbase.list()
 
         elif command == 'disable':
-            requestDisableData(hbase)
+            tableName = requestTableName(hbase)
+            hbase.disable(tableName)
+
+        elif command == 'is_enabled':
+            tableName = requestTableName(hbase)
+            hbase.is_enabled(tableName)
         
         elif command == 'drop':
             table_name = input("Ingrese el nombre de la tabla a eliminar: ").strip()
@@ -226,8 +257,8 @@ if __name__ == '__main__':
             printComands()
         
         elif command == 'exit':
-            console.print("\n¡Gracias por utilizar el programa!", style=blueBold)
+            console.print("\n¡Gracias por utilizar el programa!", style=magenta)
             break
         
         else:
-            console.print("ERROR: Comando desconocido.", style=redBold)
+            console.print("ERROR: Comando desconocido.", style=red)
