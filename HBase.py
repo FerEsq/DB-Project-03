@@ -9,7 +9,7 @@
  * Recursos: VSCode, JSON
  * Historial: 
     - Creado el 20.05.2024
-    - Modificado el 20.05.2024
+    - Modificado el 22.05.2024
 '''
 
 import json
@@ -19,6 +19,7 @@ import pyfiglet
 from rich.console import Console
 from rich.style import Style
 from prettytable import PrettyTable
+import fnmatch
 
 #Definir consola y estilos de rich
 console = Console()
@@ -43,7 +44,7 @@ class HBase:
     * tableName: Nombre de la tabla
     * columnFamilies: Lista de column families de la tabla
     """
-    def create(self, fileName, tableName, columnFamilies):
+    def create(self, fileName, tableName, columnFamilies, versions):
         #Definir la estructura de la tabla
         tableStructure = {
             "metadata": {
@@ -52,7 +53,8 @@ class HBase:
                 "disabled": False,
                 "created": datetime.now().isoformat(),
                 "modified": datetime.now().isoformat(),
-                "rows_counter": 0
+                "versions": versions
+                #"rows_counter": 0
             },
             "rows_data": {}
         }
@@ -191,25 +193,92 @@ class HBase:
     * tableName: Nombre de la tabla a eliminar
     """
     def drop(self, tableName):
-        path = os.path.join(self.directory, f'{tableName}.json')
-        if os.path.exists(path):
-            os.remove(path)
-            print(f'Table {tableName} dropped.')
-        else:
-            print(f'Table {tableName} does not exist.')
+        found = False
+
+        for file in os.listdir(self.directory):
+            if file.endswith('.json'):
+                file_path = os.path.join(self.directory, file)
+
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+
+                if data["metadata"]["table_name"] == tableName:
+                    found = True
+                    if data["metadata"]["disabled"]:
+                        try:
+                            os.remove(file_path)
+                            console.print(f"SISTEMA: Tabla {tableName} ha sido eliminada.", style=blue)
+                        except PermissionError:
+                            console.print(f'EROR: No se puede eliminar la tabla {tableName} pues el archivo está en uso.', style=red)
+                    else:
+                        console.print(f'ERROR: Tabla {tableName} está habilitada y no puede ser eliminada.', style=red)
+                        break
+        
+        if not found:
+            console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
+
+    """
+    Función para eliminar todas las tablas que coincidan con un patrón
+    * pattern: Patrón de las tablas a eliminar
+    """
+    def drop_all(self, pattern):
+        found = False
+
+        for file in os.listdir(self.directory):
+            if file.endswith('.json'):
+                file_path = os.path.join(self.directory, file)
+
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                tableName = data["metadata"]["table_name"]
+
+                if fnmatch.fnmatch(tableName, pattern):
+                    found = True
+                    if data["metadata"]["disabled"]:
+                        try:
+                            os.remove(file_path)
+                            console.print(f"SISTEMA: Tabla {tableName} ha sido eliminada.", style=blue)
+                        except PermissionError:
+                            console.print(f'EROR: No se puede eliminar la tabla {tableName} pues el archivo está en uso.', style=red)
+                    else:
+                        console.print(f'ERROR: Tabla {tableName} está habilitada y no puede ser eliminada.', style=red)
+
+        if not found:
+            console.print(f'ERROR: No se encontarton tablas que coindican con el patron "{pattern}".', style=red)
     
     """
     Función para describir una tabla en HBase
     * tableName: Nombre de la tabla a describir
     """
     def describe(self, tableName):
-        path = os.path.join(self.directory, f'{tableName}.json')
-        if os.path.exists(path):
-            with open(path, 'r') as f:
-                data = json.load(f)
-                return data
-        else:
-            print(f'Table {tableName} does not exist.')
+        found = False
+
+        for file in os.listdir(self.directory):
+            if file.endswith('.json'):
+                file_path = os.path.join(self.directory, file)
+                
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                    if data["metadata"]["table_name"] == tableName:
+                        found = True
+                        metadata = data["metadata"]
+                        
+                        table = PrettyTable()
+                        table.field_names = ["Atributo", "Valor"]
+                        
+                        table.add_row(["Table Name", metadata["table_name"]])
+                        table.add_row(["Column Families", ", ".join(metadata["column_families"])])
+                        table.add_row(["Disabled", metadata["disabled"]])
+                        table.add_row(["Created", metadata["created"]])
+                        table.add_row(["Modified", metadata["modified"]])
+                        table.add_row(["Versions", metadata.get("versions", "N/A")])
+                        
+                        print(table)
+                        break
+        
+        if not found:
+            console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
+
 
 """
 Función para imprime los comandos disponibles
@@ -223,6 +292,9 @@ def printComands():
     table.add_row(["enable", "Habilitar una tabla"])
     table.add_row(["is_enabled", "Verficar estado de una tabla"])
     table.add_row(["alter", "Alterar elementos de una tabla"])
+    table.add_row(["drop", "Eliminar una tabla"])
+    table.add_row(["drop_all", "Eliminar tablas que conicidan con un patrón"])
+    table.add_row(["describe", "Describir una tabla"])
     table.add_row(["help", "Imprimir los comandos disponibles"])
     table.add_row(["exit", "Salir del programa"])
 
@@ -248,9 +320,9 @@ if __name__ == '__main__':
                 tableName = input("Ingrese el nombre de la tabla: ").strip()
                 columnFamilies = input("Ingrese las column families separadas por comas: ").strip().split(',')
                 columnFamilies = [cf.strip() for cf in columnFamilies]
-                
+                versions = int(input("Ingrese el número máximo de versiones de celda que se almacenarán: ").strip())
                 fileName = tableName + ".json"
-                hbase.create(fileName, tableName, columnFamilies)
+                hbase.create(fileName, tableName, columnFamilies, versions)
             
             except Exception as e:
                 print()
@@ -262,7 +334,6 @@ if __name__ == '__main__':
         elif command == 'disable':
             try:
                 tableName = input("Ingrese el nombre de la tabla: ").strip()
-
                 hbase.changeStatus(tableName, "disable")
             
             except Exception as e:
@@ -272,7 +343,6 @@ if __name__ == '__main__':
         elif command == 'enable':
             try:
                 tableName = input("Ingrese el nombre de la tabla: ").strip()
-
                 hbase.changeStatus(tableName, "enable")
             
             except Exception as e:
@@ -280,8 +350,14 @@ if __name__ == '__main__':
                 console.print(f"ERROR: No fue posibe habilitar la tabla: {e}", style=red)
 
         elif command == 'is_enabled':
-            tableName = input("Ingrese el nombre de la tabla: ").strip()
-            hbase.is_enabled(tableName)
+            try:
+                tableName = input("Ingrese el nombre de la tabla: ").strip()
+                hbase.is_enabled(tableName)
+            
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posibe verificar el estado de la tabla: {e}", style=red)
+            
 
         elif command == 'alter':
             try:
@@ -297,14 +373,31 @@ if __name__ == '__main__':
                 console.print(f"ERROR: No fue posibe alterar la tabla: {e}", style=red)
         
         elif command == 'drop':
-            table_name = input("Ingrese el nombre de la tabla a eliminar: ").strip()
-            hbase.drop(table_name)
+            try:
+                tableName = input("Ingrese el nombre de la tabla a eliminar: ").strip()
+                hbase.drop(tableName)
+            
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posibe eliminar la tabla: {e}", style=red)
+
+        elif command == 'drop_all':
+            try:
+                pattern = input("Ingrese el patrón de las tablas a eliminar: ").strip()
+                hbase.drop_all(pattern)
+            
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posibe eliminar las tablas: {e}", style=red)
         
         elif command == 'describe':
-            table_name = input("Ingrese el nombre de la tabla a describir: ").strip()
-            description = hbase.describe(table_name)
-            if description:
-                print(json.dumps(description, indent=4))
+            try:
+                tableName = input("Ingrese el nombre de la tabla a describir: ").strip()
+                hbase.describe(tableName)
+            
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posibe describir la tabla: {e}", style=red)
 
         elif command == 'help':
             printComands()
