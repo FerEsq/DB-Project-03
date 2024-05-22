@@ -164,17 +164,23 @@ class HBase:
                     data = json.load(f)
 
                     if data["metadata"]["table_name"] == tableName:
-                        #Actualizar los metadatos de la tabla
-                        data["metadata"]["table_name"] = newTableName
-                        data["metadata"]["column_families"] += newColumnFamilies
-                        data["metadata"]["modified"] = datetime.now().isoformat()
-                        found = True
+                        if data["metadata"]["disabled"]:
+                            #Actualizar los metadatos de la tabla
+                            data["metadata"]["table_name"] = newTableName
+                            if newColumnFamilies != ['']:
+                                data["metadata"]["column_families"] += newColumnFamilies
+                            data["metadata"]["modified"] = datetime.now().isoformat()
+                            found = True
 
-                        #Guardar los cambios en el archivo JSON
-                        with open(filePath, 'w') as f_write:
-                            json.dump(data, f_write, indent=4)
+                            #Guardar los cambios en el archivo JSON
+                            with open(filePath, 'w') as f_write:
+                                json.dump(data, f_write, indent=4)
+                            
+                            console.print(f"SISTEMA: Tabla {tableName} ha sido alterada a {newTableName} con nuevas column families.", style=blue)
+                        else:
+                            found = True
+                            console.print(f'ERROR: Tabla {tableName} está habilitada y no puede ser alterada.', style=red)
 
-                        console.print(f"SISTEMA: Tabla {tableName} ha sido alterada a {newTableName} con nuevas column families.", style=blue)
                         break
         
         if not found:
@@ -204,53 +210,6 @@ class HBase:
                 return data
         else:
             print(f'Table {tableName} does not exist.')
-
-"""
-Función para solicitar los datos necesarios para crear una tabla en HBase
-* hbase: Instancia de la clase HBase
-"""
-def requestCreateData(hbase):
-    try:
-        tableName = input("Ingrese el nombre de la tabla: ").strip()
-        columnFamilies = input("Ingrese las column families separadas por comas: ").strip().split(',')
-        columnFamilies = [cf.strip() for cf in columnFamilies]
-        
-        return tableName, columnFamilies
-    
-    except Exception as e:
-        print()
-        console.print(f"ERROR: No fue posibe crear la tabla: {e}", style=red)
-
-"""
-Función para solicitar los datos necesarios para deshabilitar una tabla en HBase
-* hbase: Instancia de la clase HBase
-"""
-def requestTableName(hbase):
-    try:
-        tableName = input("Ingrese el nombre de la tabla: ").strip()
-
-        return tableName
-    
-    except Exception as e:
-        print()
-        console.print(f"ERROR: No fue posibe deshabilitar la tabla: {e}", style=red)
-
-"""
-Función para solicitar los datos necesarios para alterar una tabla en HBase
-* hbase: Instancia de la clase HBase
-"""
-def requestAlterData(hbase):
-    try:
-        oldTableName = input("Ingrese el nombre de la tabla a editar: ").strip()
-        newTableName = input("Ingrese el nuevo nombre de la tabla: ").strip()
-        newColumnFamilies = input("Ingrese las column families a agregar separadas por comas: ").strip().split(',')
-        newColumnFamilies = [cf.strip() for cf in newColumnFamilies]
-        
-        return oldTableName, newTableName, newColumnFamilies
-    
-    except Exception as e:
-        print()
-        console.print(f"ERROR: No fue posibe alterar la tabla: {e}", style=red)
 
 """
 Función para imprime los comandos disponibles
@@ -285,28 +244,57 @@ if __name__ == '__main__':
         command = input('> ').strip().lower()
         
         if command == 'create':
-            tableName, columnFamilies = requestCreateData(hbase)
-            fileName = tableName + ".json"
-            hbase.create(fileName, tableName, columnFamilies)
+            try:
+                tableName = input("Ingrese el nombre de la tabla: ").strip()
+                columnFamilies = input("Ingrese las column families separadas por comas: ").strip().split(',')
+                columnFamilies = [cf.strip() for cf in columnFamilies]
+                
+                fileName = tableName + ".json"
+                hbase.create(fileName, tableName, columnFamilies)
+            
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posibe crear la tabla: {e}", style=red)
         
         elif command == 'list':
             tablesList = hbase.list()
 
         elif command == 'disable':
-            tableName = requestTableName(hbase)
-            hbase.changeStatus(tableName, "disable")
+            try:
+                tableName = input("Ingrese el nombre de la tabla: ").strip()
+
+                hbase.changeStatus(tableName, "disable")
+            
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posibe deshabilitar la tabla: {e}", style=red)
 
         elif command == 'enable':
-            tableName = requestTableName(hbase)
-            hbase.changeStatus(tableName, "enable")
+            try:
+                tableName = input("Ingrese el nombre de la tabla: ").strip()
+
+                hbase.changeStatus(tableName, "enable")
+            
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posibe habilitar la tabla: {e}", style=red)
 
         elif command == 'is_enabled':
-            tableName = requestTableName(hbase)
+            tableName = input("Ingrese el nombre de la tabla: ").strip()
             hbase.is_enabled(tableName)
 
         elif command == 'alter':
-            oldTableName, newTableName, newColumnFamilies = requestAlterData(hbase)
-            hbase.alter(oldTableName, newTableName, newColumnFamilies)
+            try:
+                oldTableName = input("Ingrese el nombre de la tabla a editar: ").strip()
+                newTableName = input("Ingrese el nuevo nombre de la tabla: ").strip()
+                newColumnFamilies = input("Ingrese las column families a agregar separadas por comas (presione ENTER para omitir): ").strip().split(',')
+                newColumnFamilies = [cf.strip() for cf in newColumnFamilies]
+                
+                hbase.alter(oldTableName, newTableName, newColumnFamilies)
+            
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posibe alterar la tabla: {e}", style=red)
         
         elif command == 'drop':
             table_name = input("Ingrese el nombre de la tabla a eliminar: ").strip()
