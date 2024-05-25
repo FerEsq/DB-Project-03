@@ -20,6 +20,7 @@ from rich.console import Console
 from rich.style import Style
 from prettytable import PrettyTable
 import fnmatch
+import uuid
 
 #Definir consola y estilos de rich
 console = Console()
@@ -279,7 +280,73 @@ class HBase:
         if not found:
             console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
 
+    """
+    Función para insertar o actualizar una fila dentro de una tabla en HBase
+    * tableName: Nombre de la tabla
+    * action: Acción a realizar (insertar o actualizar)
+    """
+    def put(self, tableName, action):
+        found = False
+        for file in os.listdir(self.directory):
+            if file.endswith('.json'):
+                filePath = os.path.join(self.directory, file)
+                with open(filePath, 'r') as f:
+                    data = json.load(f)
+                
+                if data["metadata"]["table_name"] == tableName:
+                    found = True
+                    columnFamilies = data["metadata"]["column_families"]
+                    versions = data["metadata"].get("versions", 3)  #Default to 3 if versions not specified
 
+                    if action == 'i':
+                        rowID = str(uuid.uuid4())
+                        row_data = {}
+                        for cf in columnFamilies:
+                            cf_data = {}
+                            print(f"Column Family: {cf}")
+                            properties = input(f"Ingrese las propiedades para {cf} separadas por comas: ").strip().split(',')
+                            for prop in properties:
+                                value = input(f"Ingrese el valor para {prop}: ").strip()
+                                timestamp = datetime.now().isoformat()
+                                cf_data[prop] = {timestamp: value}
+                            row_data[cf] = cf_data
+                        data["rows_data"][rowID] = row_data
+                        data["metadata"]["modified"] = datetime.now().isoformat()
+                        #data["metadata"]["rows_counter"] += 1
+
+                    elif action == 'u':
+                        rowID = input("Ingrese el ID de la fila a actualizar: ").strip()
+                        if rowID in data["rows_data"]:
+                            for cf in columnFamilies:
+                                if cf in data["rows_data"][rowID]:
+                                    print(f"Column Family: {cf}")
+                                    for prop in data["rows_data"][rowID][cf]:
+                                        value = input(f"Ingrese el nuevo valor para {prop} (actual: {list(data['rows_data'][rowID][cf][prop].values())}): ").strip()
+                                        timestamp = datetime.now().isoformat()
+                                        if prop in data["rows_data"][rowID][cf]:
+                                            #Limit the number of versions stored
+                                            if len(data["rows_data"][rowID][cf][prop]) >= versions:
+                                                oldest_timestamp = sorted(data["rows_data"][rowID][cf][prop])[0]
+                                                del data["rows_data"][rowID][cf][prop][oldest_timestamp]
+                                            data["rows_data"][rowID][cf][prop][timestamp] = value
+                                        else:
+                                            data["rows_data"][rowID][cf][prop] = {timestamp: value}
+                            data["metadata"]["modified"] = datetime.now().isoformat()
+                        else:
+                            console.print(f"ERROR: No se encontró la fila con ID {rowID}.", style=red)
+                    else:
+                        console.print(f"Acción no válida. Use 'i' para insertar o 'u' para actualizar.", style=red)
+                        return
+
+                    #Guardar los cambios en el archivo JSON
+                    with open(filePath, 'w') as f_write:
+                        json.dump(data, f_write, indent=4)
+                    console.print(f"SISTEMA: Operación realizada en la tabla {tableName}.", style=blue)
+                    break
+        
+        if not found:
+            console.print(f"ERROR: Table {tableName} not found.", style=red)
+    
 """
 Función para imprime los comandos disponibles
 """
@@ -295,6 +362,7 @@ def printComands():
     table.add_row(["drop", "Eliminar una tabla"])
     table.add_row(["drop_all", "Eliminar tablas que conicidan con un patrón"])
     table.add_row(["describe", "Describir una tabla"])
+    table.add_row(["put", "Insertar/Actualizar fila"])
     table.add_row(["help", "Imprimir los comandos disponibles"])
     table.add_row(["exit", "Salir del programa"])
 
@@ -307,10 +375,9 @@ if __name__ == '__main__':
     #Imprimir bienvenida
     asciiHBase = pyfiglet.figlet_format("HBase Simulator")
     print(asciiHBase)
-
     console.print("A continuación escriba el comando que desea ejecutar:", style=magenta)
     printComands()
-    print("\n")
+    print()
     
     while True:
         command = input('> ').strip().lower()
@@ -329,7 +396,11 @@ if __name__ == '__main__':
                 console.print(f"ERROR: No fue posibe crear la tabla: {e}", style=red)
         
         elif command == 'list':
-            tablesList = hbase.list()
+            try:
+                tablesList = hbase.list()
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posibe listar las tabla: {e}", style=red)
 
         elif command == 'disable':
             try:
@@ -358,7 +429,6 @@ if __name__ == '__main__':
                 print()
                 console.print(f"ERROR: No fue posibe verificar el estado de la tabla: {e}", style=red)
             
-
         elif command == 'alter':
             try:
                 oldTableName = input("Ingrese el nombre de la tabla a editar: ").strip()
@@ -398,6 +468,16 @@ if __name__ == '__main__':
             except Exception as e:
                 print()
                 console.print(f"ERROR: No fue posibe describir la tabla: {e}", style=red)
+        
+        elif command == 'put':
+            try:
+                tableName = input("Ingrese el nombre de la tabla: ").strip()
+                action = input("¿Desea insertar (i) o actualizar (u) una fila? ").strip().lower()
+                hbase.put(tableName, action)
+            
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posibe insertar o actualizar la fila: {e}", style=red)
 
         elif command == 'help':
             printComands()

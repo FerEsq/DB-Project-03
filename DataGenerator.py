@@ -34,3 +34,8 @@ if __name__ == "__main__":
     print_colored("Este es un texto en amarillo", YELLOW)
     print_colored("Este es un texto en azul", BLUE)
 
+import uuid
+
+# Printing random id using uuid1() 
+print ("The random id using uuid1() is : ",end="") 
+print (uuid.uuid4()) 
