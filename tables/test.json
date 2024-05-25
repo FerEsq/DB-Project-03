@@ -5,10 +5,11 @@
             "hola",
             "mundo"
         ],
-        "disabled": false,
+        "disabled": true,
         "created": "2024-05-22T12:02:39.128161",
-        "modified": "2024-05-24T21:38:34.391585",
-        "versions": 3
+        "modified": "2024-05-24T22:01:55.284699",
+        "versions": 3,
+        "rows_counter": 0
     },
     "rows_data": {}
 }

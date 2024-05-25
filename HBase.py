@@ -9,7 +9,7 @@
  * Recursos: VSCode, JSON
  * Historial: 
     - Creado el 20.05.2024
-    - Modificado el 22.05.2024
+    - Modificado el 24.05.2024
 '''
 
 import json
@@ -21,6 +21,8 @@ from rich.style import Style
 from prettytable import PrettyTable
 import fnmatch
 import uuid
+import time
+from tqdm import tqdm
 
 #Definir consola y estilos de rich
 console = Console()
@@ -573,6 +575,42 @@ class HBase:
         if not foundTable:
             console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
 
+    """
+    Función para truncar las filas de una tabla en HBase
+    * tableName: Nombre de la tabla
+    """
+    def truncate(self, tableName):
+        foundTable = False
+        
+        for file in os.listdir(self.directory):
+            if file.endswith('.json'):
+                filePath = os.path.join(self.directory, file)
+                with open(filePath, 'r') as f:
+                    data = json.load(f)
+                
+                if data["metadata"]["table_name"] == tableName:
+                    data["metadata"]["modified"] = datetime.now().isoformat()
+                    foundTable = True
+                    data["metadata"]["disabled"] = True
+                    console.print(f'SISTEMA: Tabla {tableName} ha sido deshabilitada.\n', style=blue)
+                    
+                    console.print('Eliminando todas las filas...', style=green)
+                    barColor = "\033[32m"
+                    for _ in tqdm(range(100), desc="Progreso", ncols=100, bar_format=f"{barColor}{{bar}}\033[00m"):
+                        time.sleep(0.03)  # Simulación de carga
+                    
+                    data["rows_data"] = {}
+                    data["metadata"]["rows_counter"] = 0
+                    
+                    with open(filePath, 'w') as f_write:
+                        json.dump(data, f_write, indent=4)
+                    
+                    console.print(f'\nSISTEMA: Todas las filas de la tabla {tableName} han sido eliminadas.', style=blue)
+                    break
+        
+        if not foundTable:
+            console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
+
 
 """
 Función para imprime los comandos disponibles
@@ -595,6 +633,7 @@ def printComands():
     table.add_row(["delete", "Eliminar una celda, fila o column family de una tabla"])
     table.add_row(["delete_all", "Eliminar una fila de una tabla"])
     table.add_row(["count", "Contar filas de una tabla"])
+    table.add_row(["truncate", "Truncar filas de una tabla"])
     table.add_row(["help", "Imprimir los comandos disponibles"])
     table.add_row(["exit", "Salir del programa"])
 
@@ -758,6 +797,15 @@ if __name__ == '__main__':
             except Exception as e:
                 print()
                 console.print(f"ERROR: No fue posible contar la filas de la tabla: {e}", style=red)
+        
+        elif command == 'truncate':
+            try:
+                tableName = input("Ingrese el nombre de la tabla: ").strip()
+                hbase.truncate(tableName)
+            
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posible truncar la tabla: {e}", style=red)
 
         elif command == 'help':
             printComands()
