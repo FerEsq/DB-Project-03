@@ -368,26 +368,39 @@ class HBase:
                         foundRow = True
                         rowData = data["rows_data"][rowID]
                         
-                        table = PrettyTable()
-                        headers = ["Row key"]
-                        row = [rowID]
+                        # Crear tabla para los datos de la fila
+                        rowTable = PrettyTable()
+                        rowHeaders = ["Row key"]
+                        rowValues = [rowID]
                         
                         for cf, properties in rowData.items():
                             for prop, values in properties.items():
-                                headers.append(f"{cf}:{prop}")
+                                rowHeaders.append(prop)
                                 latest_timestamp = max(values.keys())
-                                row.append(values[latest_timestamp])
+                                rowValues.append(values[latest_timestamp])
                         
-                        table.field_names = headers
-                        table.add_row(row)
+                        rowTable.field_names = rowHeaders
+                        rowTable.add_row(rowValues)
                         
-                        print(table)
+                        console.print("Row Data:", style=magenta)
+                        print(rowTable)
+                        
+                        #Crear tabla para las column families y sus propiedades
+                        cfTable = PrettyTable()
+                        cfTable.field_names = ["Column Family", "Properties"]
+                        
+                        for cf, properties in rowData.items():
+                            cfTable.add_row([cf, ", ".join(properties.keys())])
+                        
+                        console.print("\nColumn Families:", style=magenta)
+                        print(cfTable)
                         break
         
         if not foundTable:
             console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
         elif not foundRow:
             console.print(f'ERROR: Fila con ID {rowID} no encontrada en la tabla {tableName}.', style=red)
+
 """
 Función para imprime los comandos disponibles
 """
