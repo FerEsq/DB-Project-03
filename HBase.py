@@ -368,38 +368,87 @@ class HBase:
                         foundRow = True
                         rowData = data["rows_data"][rowID]
                         
-                        # Crear tabla para los datos de la fila
-                        rowTable = PrettyTable()
-                        rowHeaders = ["Row key"]
-                        rowValues = [rowID]
+                        table = PrettyTable()
+                        headers = ["Row key"]
+                        row = [rowID]
                         
                         for cf, properties in rowData.items():
                             for prop, values in properties.items():
-                                rowHeaders.append(prop)
+                                headers.append(f"{cf}:{prop}")
                                 latest_timestamp = max(values.keys())
-                                rowValues.append(values[latest_timestamp])
+                                row.append(values[latest_timestamp])
                         
-                        rowTable.field_names = rowHeaders
-                        rowTable.add_row(rowValues)
+                        table.field_names = headers
+                        table.add_row(row)
                         
-                        console.print("Row Data:", style=magenta)
-                        print(rowTable)
-                        
-                        #Crear tabla para las column families y sus propiedades
-                        cfTable = PrettyTable()
-                        cfTable.field_names = ["Column Family", "Properties"]
-                        
-                        for cf, properties in rowData.items():
-                            cfTable.add_row([cf, ", ".join(properties.keys())])
-                        
-                        console.print("\nColumn Families:", style=magenta)
-                        print(cfTable)
+                        print(table)
                         break
         
         if not foundTable:
             console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
         elif not foundRow:
             console.print(f'ERROR: Fila con ID {rowID} no encontrada en la tabla {tableName}.', style=red)
+
+
+    """
+    Función para escanear una tabla en HBase
+    * tableName: Nombre de la tabla a escanear
+    """
+    def scan(self, tableName):
+        foundTable = False
+        
+        for file in os.listdir(self.directory):
+            if file.endswith('.json'):
+                filePath = os.path.join(self.directory, file)
+                with open(filePath, 'r') as f:
+                    data = json.load(f)
+                
+                if data["metadata"]["table_name"] == tableName:
+                    foundTable = True
+                    allRows = data["rows_data"]
+
+                    groupedRows = {}
+
+                    for rowID, rowData in allRows.items():
+                        #Obtener las propiedades de cada column family para agrupar las filas
+                        propertiesSignature = {}
+                        for cf, properties in rowData.items():
+                            propertiesSignature[cf] = tuple(sorted(properties.keys()))
+                        
+                        #Convertir el diccionario a una tupla para usarlo como clave
+                        propertiesSignature = tuple(sorted(propertiesSignature.items()))
+
+                        if propertiesSignature not in groupedRows:
+                            groupedRows[propertiesSignature] = []
+                        
+                        groupedRows[propertiesSignature].append((rowID, rowData))
+                    
+                    #Imprimir los grupos de filas
+                    for propertiesSignature, rows in groupedRows.items():
+                        #Crear tabla para las filas
+                        rowTable = PrettyTable()
+                        if rows:
+                            headers = ["Row key"]
+                            for cf, properties in rows[0][1].items():
+                                for prop in properties.keys():
+                                    headers.append(f"{cf}:{prop}")
+                            rowTable.field_names = headers
+
+                            for rowID, rowData in rows:
+                                row = [rowID]
+                                for cf, properties in rowData.items():
+                                    for prop, values in properties.items():
+                                        latest_timestamp = max(values.keys())
+                                        cell_value = f"{latest_timestamp}\n{values[latest_timestamp]}"
+                                        row.append(cell_value)
+                                rowTable.add_row(row, divider=True)
+
+                        print(rowTable)
+                    break
+        
+        if not foundTable:
+            print(f'ERROR: Tabla {tableName} no encontrada.', style='red')
+
 
 """
 Función para imprime los comandos disponibles
@@ -418,6 +467,7 @@ def printComands():
     table.add_row(["describe", "Describir una tabla"])
     table.add_row(["put", "Insertar/Actualizar fila"])
     table.add_row(["get", "Obtener datos de una fila"])
+    table.add_row(["scan", "Escanear una tabla"])
     table.add_row(["help", "Imprimir los comandos disponibles"])
     table.add_row(["exit", "Salir del programa"])
 
@@ -448,14 +498,14 @@ if __name__ == '__main__':
             
             except Exception as e:
                 print()
-                console.print(f"ERROR: No fue posibe crear la tabla: {e}", style=red)
+                console.print(f"ERROR: No fue posible crear la tabla: {e}", style=red)
         
         elif command == 'list':
             try:
                 tablesList = hbase.list()
             except Exception as e:
                 print()
-                console.print(f"ERROR: No fue posibe listar las tabla: {e}", style=red)
+                console.print(f"ERROR: No fue posible listar las tabla: {e}", style=red)
 
         elif command == 'disable':
             try:
@@ -464,7 +514,7 @@ if __name__ == '__main__':
             
             except Exception as e:
                 print()
-                console.print(f"ERROR: No fue posibe deshabilitar la tabla: {e}", style=red)
+                console.print(f"ERROR: No fue posible deshabilitar la tabla: {e}", style=red)
 
         elif command == 'enable':
             try:
@@ -473,7 +523,7 @@ if __name__ == '__main__':
             
             except Exception as e:
                 print()
-                console.print(f"ERROR: No fue posibe habilitar la tabla: {e}", style=red)
+                console.print(f"ERROR: No fue posible habilitar la tabla: {e}", style=red)
 
         elif command == 'is_enabled':
             try:
@@ -482,7 +532,7 @@ if __name__ == '__main__':
             
             except Exception as e:
                 print()
-                console.print(f"ERROR: No fue posibe verificar el estado de la tabla: {e}", style=red)
+                console.print(f"ERROR: No fue posible verificar el estado de la tabla: {e}", style=red)
             
         elif command == 'alter':
             try:
@@ -495,7 +545,7 @@ if __name__ == '__main__':
             
             except Exception as e:
                 print()
-                console.print(f"ERROR: No fue posibe alterar la tabla: {e}", style=red)
+                console.print(f"ERROR: No fue posible alterar la tabla: {e}", style=red)
         
         elif command == 'drop':
             try:
@@ -504,7 +554,7 @@ if __name__ == '__main__':
             
             except Exception as e:
                 print()
-                console.print(f"ERROR: No fue posibe eliminar la tabla: {e}", style=red)
+                console.print(f"ERROR: No fue posible eliminar la tabla: {e}", style=red)
 
         elif command == 'drop_all':
             try:
@@ -513,7 +563,7 @@ if __name__ == '__main__':
             
             except Exception as e:
                 print()
-                console.print(f"ERROR: No fue posibe eliminar las tablas: {e}", style=red)
+                console.print(f"ERROR: No fue posible eliminar las tablas: {e}", style=red)
         
         elif command == 'describe':
             try:
@@ -522,7 +572,7 @@ if __name__ == '__main__':
             
             except Exception as e:
                 print()
-                console.print(f"ERROR: No fue posibe describir la tabla: {e}", style=red)
+                console.print(f"ERROR: No fue posible describir la tabla: {e}", style=red)
         
         elif command == 'put':
             try:
@@ -532,7 +582,7 @@ if __name__ == '__main__':
             
             except Exception as e:
                 print()
-                console.print(f"ERROR: No fue posibe insertar o actualizar la fila: {e}", style=red)
+                console.print(f"ERROR: No fue posible insertar o actualizar la fila: {e}", style=red)
 
         elif command == 'get':
             try:
@@ -542,7 +592,16 @@ if __name__ == '__main__':
             
             except Exception as e:
                 print()
-                console.print(f"ERROR: No fue posibe obtener la fila: {e}", style=red)
+                console.print(f"ERROR: No fue posible obtener la fila: {e}", style=red)
+
+        elif command == 'scan':
+            try:
+                tableName = input("Ingrese el nombre de la tabla: ").strip()
+                hbase.scan(tableName)
+            
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posible escanear la tabla: {e}", style=red)
 
         elif command == 'help':
             printComands()
