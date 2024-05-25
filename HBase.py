@@ -519,7 +519,11 @@ class HBase:
         if not foundTable:
             console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
 
-        
+    """
+    Función para eliminar una fila en una tabla de HBase
+    * tableName: Nombre de la tabla
+    * rowKey: ID de la fila a eliminar
+    """
     def delete_all(self, tableName, rowKey):
         foundTable = False
         
@@ -547,6 +551,28 @@ class HBase:
         if not foundTable:
             console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
 
+    """
+    Función para contar las filas de una tabla en HBase
+    * tableName: Nombre de la tabla
+    """
+    def count(self, tableName):
+        foundTable = False
+        
+        for file in os.listdir(self.directory):
+            if file.endswith('.json'):
+                filePath = os.path.join(self.directory, file)
+                with open(filePath, 'r') as f:
+                    data = json.load(f)
+                
+                if data["metadata"]["table_name"] == tableName:
+                    foundTable = True
+                    row_count = len(data["rows_data"])
+                    console.print(f'Cantidad de filas en la tabla {tableName}: {row_count}', style=green)
+                    break
+        
+        if not foundTable:
+            console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
+
 
 """
 Función para imprime los comandos disponibles
@@ -566,8 +592,9 @@ def printComands():
     table.add_row(["put", "Insertar/Actualizar fila"])
     table.add_row(["get", "Obtener datos de una fila"])
     table.add_row(["scan", "Escanear una tabla"])
-    table.add_row(["delete", "Elimina una celda, fila o column family de una tabla"])
-    table.add_row(["delete_all", "Elimina una fila de una tabla"])
+    table.add_row(["delete", "Eliminar una celda, fila o column family de una tabla"])
+    table.add_row(["delete_all", "Eliminar una fila de una tabla"])
+    table.add_row(["count", "Contar filas de una tabla"])
     table.add_row(["help", "Imprimir los comandos disponibles"])
     table.add_row(["exit", "Salir del programa"])
 
@@ -722,6 +749,15 @@ if __name__ == '__main__':
             except Exception as e:
                 print()
                 console.print(f"ERROR: No fue posible eliminar la fila: {e}", style=red)
+
+        elif command == 'count':
+            try:
+                tableName = input("Ingrese el nombre de la tabla: ").strip()
+                hbase.count(tableName)
+            
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posible contar la filas de la tabla: {e}", style=red)
 
         elif command == 'help':
             printComands()
