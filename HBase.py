@@ -345,8 +345,49 @@ class HBase:
                     break
         
         if not found:
-            console.print(f"ERROR: Table {tableName} not found.", style=red)
-    
+            console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
+
+    """
+    Función para obtener los datos de una fila en una tabla de HBase
+    * tableName: Nombre de la tabla
+    * rowID: ID de la fila a obtener
+    """
+    def get(self, tableName, rowID):
+        foundTable = False
+        foundRow = False
+        
+        for file in os.listdir(self.directory):
+            if file.endswith('.json'):
+                filePath = os.path.join(self.directory, file)
+                with open(filePath, 'r') as f:
+                    data = json.load(f)
+                
+                if data["metadata"]["table_name"] == tableName:
+                    foundTable = True
+                    if rowID in data["rows_data"]:
+                        foundRow = True
+                        rowData = data["rows_data"][rowID]
+                        
+                        table = PrettyTable()
+                        headers = ["Row key"]
+                        row = [rowID]
+                        
+                        for cf, properties in rowData.items():
+                            for prop, values in properties.items():
+                                headers.append(f"{cf}:{prop}")
+                                latest_timestamp = max(values.keys())
+                                row.append(values[latest_timestamp])
+                        
+                        table.field_names = headers
+                        table.add_row(row)
+                        
+                        print(table)
+                        break
+        
+        if not foundTable:
+            console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
+        elif not foundRow:
+            console.print(f'ERROR: Fila con ID {rowID} no encontrada en la tabla {tableName}.', style=red)
 """
 Función para imprime los comandos disponibles
 """
@@ -363,6 +404,7 @@ def printComands():
     table.add_row(["drop_all", "Eliminar tablas que conicidan con un patrón"])
     table.add_row(["describe", "Describir una tabla"])
     table.add_row(["put", "Insertar/Actualizar fila"])
+    table.add_row(["get", "Obtener datos de una fila"])
     table.add_row(["help", "Imprimir los comandos disponibles"])
     table.add_row(["exit", "Salir del programa"])
 
@@ -478,6 +520,16 @@ if __name__ == '__main__':
             except Exception as e:
                 print()
                 console.print(f"ERROR: No fue posibe insertar o actualizar la fila: {e}", style=red)
+
+        elif command == 'get':
+            try:
+                tableName = input("Ingrese el nombre de la tabla: ").strip()
+                rowID = input("Ingrese el ID de la fila: ").strip()
+                hbase.get(tableName, rowID)
+            
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posibe obtener la fila: {e}", style=red)
 
         elif command == 'help':
             printComands()
