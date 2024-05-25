@@ -294,6 +294,7 @@ class HBase:
                     data = json.load(f)
                 
                 if data["metadata"]["table_name"] == tableName:
+                    data["metadata"]["modified"] = datetime.now().isoformat()
                     found = True
                     columnFamilies = data["metadata"]["column_families"]
                     versions = data["metadata"].get("versions", 3)  #Default to 3 if versions not specified
@@ -463,6 +464,7 @@ class HBase:
                     data = json.load(f)
                 
                 if data["metadata"]["table_name"] == tableName:
+                    data["metadata"]["modified"] = datetime.now().isoformat()
                     foundTable = True
                     
                     if action == 'c':
@@ -517,6 +519,34 @@ class HBase:
         if not foundTable:
             console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
 
+        
+    def delete_all(self, tableName, rowKey):
+        foundTable = False
+        
+        for file in os.listdir(self.directory):
+            if file.endswith('.json'):
+                filePath = os.path.join(self.directory, file)
+                with open(filePath, 'r') as f:
+                    data = json.load(f)
+                
+                if data["metadata"]["table_name"] == tableName:
+                    data["metadata"]["modified"] = datetime.now().isoformat()
+                    foundTable = True
+                    
+                    if rowKey in data["rows_data"]:
+                        del data["rows_data"][rowKey]
+                        console.print(f'SISTEMA: Fila eliminada {rowKey}', style=blue)
+                        
+                        #Guardar los cambios en el archivo JSON
+                        with open(filePath, 'w') as f_write:
+                            json.dump(data, f_write, indent=4)
+                    else:
+                        console.print(f'ERROR: No se encontró la fila con row key {rowKey}.', style=red)
+                    break
+        
+        if not foundTable:
+            console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
+
 
 """
 Función para imprime los comandos disponibles
@@ -536,6 +566,8 @@ def printComands():
     table.add_row(["put", "Insertar/Actualizar fila"])
     table.add_row(["get", "Obtener datos de una fila"])
     table.add_row(["scan", "Escanear una tabla"])
+    table.add_row(["delete", "Elimina una celda, fila o column family de una tabla"])
+    table.add_row(["delete_all", "Elimina una fila de una tabla"])
     table.add_row(["help", "Imprimir los comandos disponibles"])
     table.add_row(["exit", "Salir del programa"])
 
@@ -680,6 +712,16 @@ if __name__ == '__main__':
             except Exception as e:
                 print()
                 console.print(f"ERROR: No fue posible ejecutar la función delete: {e}", style=red)
+
+        elif command == 'delete_all':
+            try:
+                tableName = input("Ingrese el nombre de la tabla: ").strip()
+                rowKey = input("Ingrese la row key: ").strip()
+                hbase.delete_all(tableName, rowKey)
+            
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posible eliminar la fila: {e}", style=red)
 
         elif command == 'help':
             printComands()

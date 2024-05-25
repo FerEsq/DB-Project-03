@@ -7,16 +7,8 @@
         ],
         "disabled": false,
         "created": "2024-05-22T12:02:39.128161",
-        "modified": "2024-05-24T17:59:09.395347",
+        "modified": "2024-05-24T21:38:34.391585",
         "versions": 3
     },
-    "rows_data": {
-        "2e58f4bf-9314-4444-9b7a-b1ddc481994b": {
-            "hola": {
-                "palabra": {
-                    "2024-05-24T17:59:03.284215": "saludito"
-                }
-            }
-        }
-    }
+    "rows_data": {}
 }
