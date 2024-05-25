@@ -447,7 +447,75 @@ class HBase:
                     break
         
         if not foundTable:
-            print(f'ERROR: Tabla {tableName} no encontrada.', style='red')
+            console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
+
+    """
+    Función para eliminar una celda, una fila o una familia de columnas en una tabla de HBase
+    * tableName: Nombre de la tabla
+    """
+    def delete(self, tableName, action):        
+        foundTable = False
+        
+        for file in os.listdir(self.directory):
+            if file.endswith('.json'):
+                filePath = os.path.join(self.directory, file)
+                with open(filePath, 'r') as f:
+                    data = json.load(f)
+                
+                if data["metadata"]["table_name"] == tableName:
+                    foundTable = True
+                    
+                    if action == 'c':
+                        rowKey = input("Ingrese la row key: ").strip()
+                        columnFamily = input("Ingrese la column family: ").strip()
+                        qualifier = input("Ingrese el qualifier: ").strip()
+                        
+                        if rowKey in data["rows_data"]:
+                            if columnFamily in data["rows_data"][rowKey]:
+                                if qualifier in data["rows_data"][rowKey][columnFamily]:
+                                    del data["rows_data"][rowKey][columnFamily][qualifier]
+                                    if not data["rows_data"][rowKey][columnFamily]:
+                                        del data["rows_data"][rowKey][columnFamily]
+                                    console.print(f'SISTEMA: Celda eliminada {rowKey} - {columnFamily}:{qualifier}', style=blue)
+                                else:
+                                    console.print(f'ERROR: No se encontró el qualifier {qualifier} en la column family {columnFamily}.', style=red)
+                            else:
+                                console.print(f'ERROR: No se encontró la column family {columnFamily} en la fila {rowKey}.', style=red)
+                        else:
+                            console.print(f'ERROR: No se encontró la fila con row key {rowKey}.', style=red)
+                    
+                    elif action == 'r':
+                        rowKey = input("Ingrese la row key: ").strip()
+                        
+                        if rowKey in data["rows_data"]:
+                            del data["rows_data"][rowKey]
+                            console.print(f'SISTEMA: Fila eliminada {rowKey}', style=blue)
+                        else:
+                            console.print(f'ERROR: No se encontró la fila con row key {rowKey}.', style=red)
+                    
+                    elif action == 'f':
+                        rowKey = input("Ingrese la row key: ").strip()
+                        columnFamily = input("Ingrese la column family: ").strip()
+                        
+                        if rowKey in data["rows_data"]:
+                            if columnFamily in data["rows_data"][rowKey]:
+                                del data["rows_data"][rowKey][columnFamily]
+                                console.print(f'SISTEMA: Column family eliminada {rowKey} - {columnFamily}', style=blue)
+                            else:
+                                console.print(f'ERROR: No se encontró la column family {columnFamily} en la fila {rowKey}.', style=red)
+                        else:
+                            console.print(f'ERROR: No se encontró la fila con row key {rowKey}.', style=red)
+                    
+                    else:
+                        print("Acción no válida. Use 'c' para eliminar una celda, 'r' para eliminar una fila o 'f' para eliminar una familia de columnas.")
+                    
+                    #Guardar los cambios en el archivo JSON
+                    with open(filePath, 'w') as f_write:
+                        json.dump(data, f_write, indent=4)
+                    break
+        
+        if not foundTable:
+            console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
 
 
 """
@@ -602,6 +670,16 @@ if __name__ == '__main__':
             except Exception as e:
                 print()
                 console.print(f"ERROR: No fue posible escanear la tabla: {e}", style=red)
+
+        elif command == 'delete':
+            try:
+                tableName = input("Ingrese el nombre de la tabla: ").strip()
+                action = input("¿Desea eliminar una celda (c), una fila (r) o una familia de columnas (f)? ").strip().lower()
+                hbase.delete(tableName, action)
+            
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posible ejecutar la función delete: {e}", style=red)
 
         elif command == 'help':
             printComands()
