@@ -351,6 +351,35 @@ class HBase:
             console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
 
     """
+    Función para insertar multiples filas dentro de una tabla en HBase
+    * tableName: Nombre de la tabla
+    """
+    def insertMany(self, tablename):
+        try:
+            while True:
+                self.put(tableName=tableName, action='i')
+                console.print("\nCRTL+C para terminar de insertar\n", style=red)
+        except KeyboardInterrupt:
+            print("\nFin de inserción multiple")
+        except Exception as e:
+            return e
+        
+        """
+    Función para actualizar multiples filas dentro de una tabla en HBase
+    * tableName: Nombre de la tabla
+    """
+    def updateMany(self, tablename):
+        try:
+            while True:
+                self.put(tableName=tableName, action='u')
+                console.print("\nCRTL+C para terminar de actualizar\n", style=red)
+        except KeyboardInterrupt:
+            print("\nFin de actualización multiple")
+        except Exception as e:
+            return e
+        
+        
+    """
     Función para obtener los datos de una fila en una tabla de HBase
     * tableName: Nombre de la tabla
     * rowID: ID de la fila a obtener
@@ -628,6 +657,8 @@ def printComands():
     table.add_row(["drop_all", "Eliminar tablas que conicidan con un patrón"])
     table.add_row(["describe", "Describir una tabla"])
     table.add_row(["put", "Insertar/Actualizar fila"])
+    table.add_row(["insert_many", "Insertación de multiples filas"])
+    table.add_row(["update_many", "Actualización de multiples filas"])
     table.add_row(["get", "Obtener datos de una fila"])
     table.add_row(["scan", "Escanear una tabla"])
     table.add_row(["delete", "Eliminar una celda, fila o column family de una tabla"])
@@ -750,6 +781,23 @@ if __name__ == '__main__':
                 print()
                 console.print(f"ERROR: No fue posible insertar o actualizar la fila: {e}", style=red)
 
+        elif command == 'insert_many':
+            try:
+                tableName = input("Ingrese el nombre de la tabla: ").strip()
+                hbase.insertMany(tableName)
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posible insertar multiples filas: {e}", style=red)
+
+        elif command == 'update_many':
+            try:
+                tableName = input("Ingrese el nombre de la tabla: ").strip()
+                hbase.updateMany(tableName)
+            except Exception as e:
+                print()
+                console.print(f"ERROR: No fue posible actualizar multiples filas: {e}", style=red)
+
+        
         elif command == 'get':
             try:
                 tableName = input("Ingrese el nombre de la tabla: ").strip()
