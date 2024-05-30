@@ -21,8 +21,10 @@ from faker import Faker
 
 #Configuración
 seed = 288
-numRows = 10
-outputFile = "tables/schedules.json"
+#10 = 2881
+#5 = 28812
+numRows = 5
+outputFile = "tables/schedules3.json"
 
 #Inicializar Faker y establecer semilla
 faker = Faker()
@@ -43,7 +45,7 @@ facultades = [
 
 #Generar datos de la tabla
 metadata = {
-    "table_name": "schedules",
+    "table_name": "schedules2",
     "column_families": [
         "classrooms",
         "teachers"

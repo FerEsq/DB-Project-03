@@ -143,7 +143,6 @@ class HBase:
                     if data["metadata"]["table_name"] == tableName:
                         found = True
                         if data["metadata"]["disabled"]:
-                            print(f'Table {tableName} IS disabled.')
                             console.print(f'Tabla {tableName} SI está deshabilitada.', style=yellow)
                         else:
                             console.print(f'Tabla {tableName} NO está deshabilitada.', style=green)
