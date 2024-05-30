@@ -1,6 +1,6 @@
 {
     "metadata": {
-        "table_name": "schedules2",
+        "table_name": "schedules3",
         "column_families": [
             "classrooms",
             "teachers"

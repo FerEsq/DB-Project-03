@@ -47,7 +47,7 @@ class HBase:
     * tableName: Nombre de la tabla
     * columnFamilies: Lista de column families de la tabla
     """
-    def create(self, fileName, tableName, columnFamilies, versions):
+    def create(self, fileName, tableName, columnFamilies, versions):    
         #Definir la estructura de la tabla
         tableStructure = {
             "metadata": {
@@ -61,7 +61,7 @@ class HBase:
             },
             "rows_data": {}
         }
-        
+
         #Crear el archivo JSON con la estructura de la tabla
         filePath = os.path.join(self.directory, fileName)
         
@@ -71,9 +71,13 @@ class HBase:
             if overwrite != 's':
                 console.print("SISTEMA: Operación cancelada. La tabla no fue creada.", style=blue)
                 return
-        
-        with open(filePath, 'w') as f:
-            json.dump(tableStructure, f, indent=4)
+
+        if columnFamilies == [''] or tableName == "":
+            console.print("ERROR: Debe ingresar todos los parámetros.", style=red)
+            return
+        else:
+            with open(filePath, 'w') as f:
+                json.dump(tableStructure, f, indent=4)
         
         console.print(f'SISTEMA: Tabla {tableName} creada en {filePath}.', style=blue)
     
@@ -469,9 +473,12 @@ class HBase:
                                 row = [rowID]
                                 for cf, properties in rowData.items():
                                     for prop, values in properties.items():
-                                        latest_timestamp = max(values.keys())
-                                        cell_value = f"{latest_timestamp}\n{values[latest_timestamp]}"
-                                        row.append(cell_value)
+                                        if values:
+                                            latestTimestamp = max(values.keys())
+                                            cellValue = f"{latestTimestamp}\n{values[latestTimestamp]}"
+                                        else:
+                                            cellValue = ""
+                                        row.append(cellValue)
                                 rowTable.add_row(row, divider=True)
 
                         print(rowTable)
@@ -479,6 +486,7 @@ class HBase:
         
         if not foundTable:
             console.print(f'ERROR: Tabla {tableName} no encontrada.', style=red)
+
 
     """
     Función para eliminar una celda, una fila o una familia de columnas en una tabla de HBase
